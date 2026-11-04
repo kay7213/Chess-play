@@ -11,9 +11,9 @@ def main() -> None:
     root.title("오프라인 변형 체스 (Offline Variant Chess)")
     root.resizable(False, False)
 
-    # 화면 중앙에 윈도우 배치
-    window_width = 560
-    window_height = 640
+    # 화면 중앙에 윈도우 배치 (좌측 체스판 + 우측 오프닝 패널 너비 확보)
+    window_width = 960
+    window_height = 650
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     pos_x = (screen_width - window_width) // 2
