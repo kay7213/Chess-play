@@ -18,6 +18,7 @@ class ChessGame:
         self.moved: Set[Tuple[int, int]] = set()
         self.rooks, self.k_col = [0, 7], 4
         self.halfmove_clock, self.pos_history = 0, {}
+        self.fullmove_number = 1
         self.reset(mode)
 
     def generate_chess960_rank(self) -> List[str]:
@@ -38,6 +39,7 @@ class ChessGame:
             self.initial_back = self.generate_chess960_rank() if self.mode == "chess960" else ["R", "N", "B", "Q", "K", "B", "N", "R"]
         self.current_turn, self.winner, self.win_reason = "W", None, ""
         self.ep_target, self.moved, self.halfmove_clock, self.pos_history = None, set(), 0, {}
+        self.fullmove_number = 1
         self.board = [[None for _ in range(8)] for _ in range(8)]
         self.rooks = [i for i, p in enumerate(self.initial_back) if p == "R"]
         self.k_col = self.initial_back.index("K")
@@ -179,6 +181,8 @@ class ChessGame:
             self.winner, self.win_reason = color, f"{cname} 킹이 중앙 언덕(d4/d5/e4/e5)을 점령했습니다!"
             return True
 
+        if color == "B":
+            self.fullmove_number += 1
         self.current_turn = "B" if self.current_turn == "W" else "W"
         self.record_pos()
 
@@ -192,3 +196,54 @@ class ChessGame:
         elif self.halfmove_clock >= 100:
             self.winner, self.win_reason = "Draw", "50수 규칙(50-move rule)으로 무승부입니다."
         return True
+
+    def to_fen(self) -> str:
+        """현재 체스판 상태를 FEN (Forsyth-Edwards Notation) 문자열로 변환합니다."""
+        ranks = []
+        for r in range(8):
+            empty_count = 0
+            rank_str = ""
+            for c in range(8):
+                square = self.board[r][c]
+                if square is None:
+                    empty_count += 1
+                else:
+                    if empty_count > 0:
+                        rank_str += str(empty_count)
+                        empty_count = 0
+                    color, piece = square
+                    rank_str += piece.upper() if color == "W" else piece.lower()
+            if empty_count > 0:
+                rank_str += str(empty_count)
+            ranks.append(rank_str)
+        board_fen = "/".join(ranks)
+
+        turn_fen = "w" if self.current_turn == "W" else "b"
+
+        castling = ""
+        if self.mode == "standard":
+            # White: 킹이 (7, 4)에 있고 움직이지 않음
+            if (7, 4) not in self.moved and self.board[7][4] == ("W", "K"):
+                if (7, 7) not in self.moved and self.board[7][7] == ("W", "R"):
+                    castling += "K"
+                if (7, 0) not in self.moved and self.board[7][0] == ("W", "R"):
+                    castling += "Q"
+            # Black: 킹이 (0, 4)에 있고 움직이지 않음
+            if (0, 4) not in self.moved and self.board[0][4] == ("B", "K"):
+                if (0, 7) not in self.moved and self.board[0][7] == ("B", "R"):
+                    castling += "k"
+                if (0, 0) not in self.moved and self.board[0][0] == ("B", "R"):
+                    castling += "q"
+        if not castling:
+            castling = "-"
+
+        if self.ep_target is not None:
+            er, ec = self.ep_target
+            ep_fen = f"{chr(ord('a') + ec)}{8 - er}"
+        else:
+            ep_fen = "-"
+
+        halfmove_fen = str(self.halfmove_clock)
+        fullmove_fen = str(self.fullmove_number)
+
+        return f"{board_fen} {turn_fen} {castling} {ep_fen} {halfmove_fen} {fullmove_fen}"
